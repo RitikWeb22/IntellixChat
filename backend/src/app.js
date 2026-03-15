@@ -1,0 +1,22 @@
+import e, { json } from 'express';
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import morgan from "morgan"
+const app = express();
+// Middleware
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}))
+app.use(morgan("dev"));
+
+
+// Routes
+import authRouter from './routes/auth.route.js';
+app.use("/api/auth", authRouter);
+
+
+export default app;
