@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { de } from "zod/v4/locales";
 
 const chatSchema = new mongoose.Schema(
     {
@@ -9,7 +10,7 @@ const chatSchema = new mongoose.Schema(
         },
         title: {
             type: String,
-            required: true,
+            default: "New Chat",
             trim: true,
         },
     },

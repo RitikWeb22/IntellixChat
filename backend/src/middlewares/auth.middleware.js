@@ -4,9 +4,9 @@ import { redis } from "../config/cache.js";
 
 
 
-export function identifyUser(req, res, next) {
+export async function identifyUser(req, res, next) {
 
-    const token = req.cookies.token;
+    const token = req.cookies?.token;
 
 
     if (!token) {
@@ -17,17 +17,20 @@ export function identifyUser(req, res, next) {
         })
     }
 
-    const blacklisted = redis.get(token)
-    if (blacklisted) {
-        console.log("Token is blacklisted sucessfully")
-    }
-
     try {
+        // Check if token is blacklisted
+        const isBlacklisted = await redis.get(token);
+        if (isBlacklisted) {
+            return res.status(401).json({
+                message: "Unauthorized",
+                success: false,
+                err: "Token has been revoked"
+            })
+        }
 
+        // Verify JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
         req.user = decoded;
-
         next();
 
     } catch (err) {

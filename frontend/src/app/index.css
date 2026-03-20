@@ -1,1 +1,291 @@
 @import "tailwindcss";
+
+.theme-fade,
+.theme-fade * {
+  transition-property:
+    background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 320ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.theme-flash-to-light {
+  background: radial-gradient(
+    circle at 50% 12%,
+    rgba(255, 255, 255, 0.36),
+    transparent 58%
+  );
+  animation: theme-flash-light 560ms ease-out;
+}
+
+.theme-flash-to-dark {
+  background: radial-gradient(
+    circle at 50% 12%,
+    rgba(15, 23, 42, 0.42),
+    transparent 58%
+  );
+  animation: theme-flash-dark 560ms ease-out;
+}
+
+@keyframes theme-flash-light {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes theme-flash-dark {
+  0% {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-fade,
+  .theme-fade * {
+    transition-duration: 0ms;
+  }
+
+  .theme-flash-to-light,
+  .theme-flash-to-dark {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.chat-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.chat-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.typing-dots span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.25;
+  animation: typing-bounce 1s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 0.85;
+    transform: translateY(-2px);
+  }
+}
+
+.markdown-chat {
+  white-space: normal;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-chat * {
+  max-width: 100%;
+}
+
+.markdown-chat p {
+  margin: 0.35rem 0;
+}
+
+.markdown-chat ul,
+.markdown-chat ol {
+  margin: 0.35rem 0;
+  padding-left: 1.2rem;
+}
+
+.markdown-chat :not(pre) > code {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.markdown-chat pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.markdown-chat pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.markdown-chat h1,
+.markdown-chat h2,
+.markdown-chat h3 {
+  margin-top: 0.65rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-chat blockquote {
+  border-left: 3px solid rgba(239, 68, 68, 0.6);
+  margin: 0.45rem 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.35rem;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.markdown-table tr {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.markdown-table tr:last-child {
+  border-bottom: none;
+}
+
+.markdown-thead {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.loader-bars {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.loader-bars span {
+  display: block;
+  height: 0.42rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 0.2),
+    rgba(239, 68, 68, 0.58),
+    rgba(239, 68, 68, 0.2)
+  );
+  background-size: 220% 100%;
+  animation: loader-slide 1.25s linear infinite;
+}
+
+.loader-bars span:nth-child(1) {
+  width: 65%;
+}
+
+.loader-bars span:nth-child(2) {
+  width: 88%;
+  animation-delay: 120ms;
+}
+
+.loader-bars span:nth-child(3) {
+  width: 52%;
+  animation-delay: 220ms;
+}
+
+@keyframes loader-slide {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -75% 0;
+  }
+}
+
+.welcome-card {
+  transform: translateY(0);
+  transition:
+    transform 260ms ease,
+    box-shadow 260ms ease,
+    border-color 260ms ease;
+}
+
+.welcome-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.16);
+  border-color: rgba(239, 68, 68, 0.3); /* Tone down the border color */
+}
+
+.hero-chip {
+  border-color: rgba(239, 68, 68, 0.2); /* Tone down the border color */
+  background: linear-gradient(
+    120deg,
+    rgba(239, 68, 68, 0.16),
+    rgba(244, 63, 94, 0.08)
+  );
+}
+
+.chat-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.14) 25%,
+    rgba(148, 163, 184, 0.28) 40%,
+    rgba(148, 163, 184, 0.14) 55%
+  );
+  background-size: 240% 100%;
+  animation: chat-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes chat-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-bars span,
+  .typing-dots span {
+    animation: none;
+  }
+
+  .chat-skeleton {
+    animation: none;
+  }
+
+  .welcome-card {
+    transition: none;
+  }
+}
