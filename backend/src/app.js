@@ -6,6 +6,7 @@ import morgan from "morgan"
 import chatRouter from './routes/chat.route.js';
 const app = express();
 // Middleware
+app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
