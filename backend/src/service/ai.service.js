@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatGoogle } from "@langchain/google";
 import { ChatMistralAI } from "@langchain/mistralai"
 import { HumanMessage, SystemMessage, AIMessage, tool, createAgent } from "langchain";
 import * as z from "zod";
@@ -54,29 +53,86 @@ const readWebPageTool = tool(
     }
 )
 
+// Safe calculator for mathematical expressions (no arbitrary code execution)
+async function evaluateMath({ expression }) {
+    if (!expression || String(expression).length > 200) {
+        return JSON.stringify({ error: "Expression must be 1-200 characters." });
+    }
+    const allowed = /^[0-9+\-*/().%\s]+$/;
+    if (!allowed.test(expression)) {
+        return JSON.stringify({ error: "Invalid characters. Only numbers, +, -, *, /, (, ), % allowed." });
+    }
+    const sanitized = String(expression).replace(/\s/g, "");
+    try {
+        const result = Function(`"use strict"; return (${sanitized})`)();
+        return JSON.stringify({ expression: sanitized, result: Number.isFinite(result) ? result : String(result) });
+    } catch (e) {
+        return JSON.stringify({ error: e.message || "Invalid expression" });
+    }
+}
+
+const calculatorTool = tool(
+    evaluateMath,
+    {
+        name: "calculator",
+        description: "Use this tool to evaluate mathematical expressions. Supports +, -, *, /, parentheses, and %. Example: (15 * 3) + 7",
+        schema: z.object({
+            expression: z.string().describe("The mathematical expression to evaluate, e.g. '2 + 3 * 4' or '(100 - 25) / 3'")
+        })
+    }
+)
+
+// Current date and time
+async function getCurrentDateTime(_input = {}) {
+    const now = new Date();
+    return JSON.stringify({
+        iso: now.toISOString(),
+        date: now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
+        time: now.toLocaleTimeString("en-US", { hour12: true }),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        unix: Math.floor(now.getTime() / 1000)
+    });
+}
+
+const getCurrentDateTimeTool = tool(
+    getCurrentDateTime,
+    {
+        name: "getCurrentDateTime",
+        description: "Use this tool to get the current date, time, timezone, and UNIX timestamp. Use when the user asks what time/date it is, or when time-sensitive context is needed.",
+        schema: z.object({})
+    }
+)
+
+// Google Maps search - returns a search URL (no API key required)
+async function googleMapsSearch({ query }) {
+    const encoded = encodeURIComponent(query);
+    const url = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    return JSON.stringify({ query, mapsSearchUrl: url });
+}
+
+const googleMapsSearchTool = tool(
+    googleMapsSearch,
+    {
+        name: "googleMapsSearch",
+        description: "Use this tool when the user asks for nearby places, restaurants, routes, directions, or location discovery. Returns a clickable Google Maps search URL.",
+        schema: z.object({
+            query: z.string().describe("The search query for Google Maps, e.g. 'pizza near me', 'route from A to B', 'coffee shops downtown'")
+        })
+    }
+)
 
 
-// Add code interpreter tool for Mistral agent
-const codeInterpreterTool = {
-    name: "codeInterpreter",
-    description: "Use this tool to execute code snippets or scripts.",
-    type: "code_interpreter",
-    schema: z.object({
-        code: z.string().describe("The code snippet or script to execute.")
-    })
 
-};
-
-
+const agentTools = [searchInternetTool, readWebPageTool, emailTool, calculatorTool, getCurrentDateTimeTool, googleMapsSearchTool];
 
 const agent = createAgent({
     model: mistralModel,
-    tools: [searchInternetTool, readWebPageTool, emailTool, codeInterpreterTool],
+    tools: agentTools,
 })
 
 const fallbackAgent = createAgent({
     model: geminiModel,
-    tools: [searchInternetTool, readWebPageTool, emailTool],
+    tools: agentTools,
 })
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -115,12 +171,14 @@ function buildAgentMessages(messages) {
     return [
         new SystemMessage(`
                 You are a helpful and precise assistant for answering questions.
-                If you don't know the answer, say you don't know. 
-                If the question requires up-to-date information, use the "searchInternet" tool to get the latest information from the internet and then answer based on the search results.
-                If the user provides a URL or asks for details from a specific page, use the "readWebPage" tool.
-                If the user asks for nearby places, restaurants, routes, or location discovery, use the "googleMapsSearch" tool.
-                When using "googleMapsSearch", always include the provided mapsSearchUrl as a clickable link in your final answer.
-                You can also use the "sendEmail" tool to send emails in formatted HTML.
+                If you don't know the answer, say you don't know.
+                Tools available:
+                - searchInternet: Get the latest information from the web. Use when questions need up-to-date info.
+                - readWebPage: Fetch and read a webpage's content from a URL. Use when user provides a URL or asks for page details.
+                - sendEmail: Send emails with recipient, subject, and HTML content.
+                - calculator: Evaluate math expressions (+, -, *, /, %, parentheses). Use for any arithmetic.
+                - getCurrentDateTime: Get current date, time, timezone. Use when user asks what time/date it is.
+                - googleMapsSearch: For nearby places, restaurants, routes, directions. Always include the returned mapsSearchUrl as a clickable link in your answer.
             `),
         ...(messages
             .map((msg) => {
