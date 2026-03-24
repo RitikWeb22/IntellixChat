@@ -1,6 +1,7 @@
 import axios from "axios";
+
 const api = axios.create({
-    baseURL: "http://localhost:3000",
+    baseURL: import.meta.env.DEV ? "" : (import.meta.env.VITE_API_URL || ""),
     withCredentials: true,
 })
 
@@ -32,5 +33,11 @@ export async function getMe() {
 // logout
 export async function logout() {
     const response = await api.post("/api/auth/logout");
+    return response.data;
+}
+
+// resend verification email
+export async function resendVerificationEmail({ email }) {
+    const response = await api.post("/api/auth/resend-verification-email", { email });
     return response.data;
 }

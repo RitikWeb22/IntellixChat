@@ -56,9 +56,22 @@ const readWebPageTool = tool(
 
 
 
+// Add code interpreter tool for Mistral agent
+const codeInterpreterTool = {
+    name: "codeInterpreter",
+    description: "Use this tool to execute code snippets or scripts.",
+    type: "code_interpreter",
+    schema: z.object({
+        code: z.string().describe("The code snippet or script to execute.")
+    })
+
+};
+
+
+
 const agent = createAgent({
     model: mistralModel,
-    tools: [searchInternetTool, readWebPageTool, emailTool],
+    tools: [searchInternetTool, readWebPageTool, emailTool, codeInterpreterTool],
 })
 
 const fallbackAgent = createAgent({

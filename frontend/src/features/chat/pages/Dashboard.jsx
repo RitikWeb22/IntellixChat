@@ -8,7 +8,6 @@ import {
   Menu,
   Moon,
   MessageSquare,
-  Sparkles,
   Plus,
   Send,
   Sun,
@@ -20,6 +19,9 @@ import {
   Check,
   Globe,
   Mail,
+  Calculator,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -30,7 +32,6 @@ import { logout } from "../../auth/services/auth.api";
 import { setUser } from "../../auth/auth.slice";
 import { setCurrentChatId } from "../chat.slice";
 import { toggleTheme } from "../../../app/theme.slice";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 
 // Custom code block component with copy functionality and syntax highlighting
 const CodeBlock = ({ node, inline, className, children, ...props }) => {
@@ -143,7 +144,7 @@ const Dashboard = () => {
   const isLightMode = themeMode === "light";
   const ui = isLightMode
     ? {
-        page: "bg-linear-to-br from-[#f7f8ff] via-[#fbfdff] to-[#edf3ff] text-slate-900",
+        page: "bg-gradient-to-br from-[#f7f8ff] via-[#fbfdff] to-[#edf3ff] text-slate-900",
         mobileToggle: "bg-white text-slate-700 shadow",
         sidebar: "bg-white/85 md:bg-white/70",
         mutedText: "text-slate-500",
@@ -165,7 +166,7 @@ const Dashboard = () => {
         inputText: "text-slate-900 placeholder:text-slate-400",
       }
     : {
-        page: "bg-linear-to-br from-[#161b2e] via-[#1e2438] to-[#171c30] text-slate-100",
+        page: "bg-gradient-to-br from-[#161b2e] via-[#1e2438] to-[#171c30] text-slate-100",
         mobileToggle: "bg-[#232a42] text-slate-200 shadow",
         sidebar: "bg-[#171d31]/92 md:bg-[#171d31]/76",
         mutedText: "text-slate-400",
@@ -254,7 +255,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!messageListRef.current) return;
     messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
-  }, [messages.length, isTypingCurrent, currentChatId]);
+  }, [messages.length, isTypingCurrent, currentChatId, streamContent]);
 
   const displayName =
     user?.username ||
@@ -453,7 +454,7 @@ const Dashboard = () => {
                     one workspace.
                   </p>
 
-                  <div className="mt-7 grid gap-3 text-left md:grid-cols-3">
+                  <div className="mt-7 grid gap-3 text-left sm:grid-cols-2 md:grid-cols-3">
                     {[
                       {
                         title: "Search Internet",
@@ -464,7 +465,7 @@ const Dashboard = () => {
                       {
                         title: "Read Web Page",
                         description:
-                          "Extracts clean text content directly from a URL.",
+                          "Extract clean text content directly from any URL.",
                         icon: Table2,
                       },
                       {
@@ -473,20 +474,41 @@ const Dashboard = () => {
                           "Draft and send formatted HTML emails from chat.",
                         icon: Mail,
                       },
-                    ].map((feature) => (
-                      <div
-                        key={feature.title}
-                        className={`welcome-card rounded-xl p-4 ${ui.welcomeCard}`}
-                      >
-                        <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
-                          <feature.icon size={15} />
+                      {
+                        title: "Calculator",
+                        description:
+                          "Evaluate math expressions for quick calculations.",
+                        icon: Calculator,
+                      },
+                      {
+                        title: "Current Date & Time",
+                        description:
+                          "Get the current date, time, and timezone.",
+                        icon: Clock,
+                      },
+                      {
+                        title: "Google Maps",
+                        description:
+                          "Find places, routes, and directions with Maps links.",
+                        icon: MapPin,
+                      },
+                    ].map((feature) => {
+                      const Icon = feature.icon;
+                      return (
+                        <div
+                          key={feature.title}
+                          className={`welcome-card rounded-xl p-4 ${ui.welcomeCard}`}
+                        >
+                          <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
+                            <Icon size={15} />
+                          </div>
+                          <p className="text-sm font-semibold">{feature.title}</p>
+                          <p className={`mt-1 text-xs leading-5 ${ui.mutedText}`}>
+                            {feature.description}
+                          </p>
                         </div>
-                        <p className="text-sm font-semibold">{feature.title}</p>
-                        <p className={`mt-1 text-xs leading-5 ${ui.mutedText}`}>
-                          {feature.description}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -548,7 +570,7 @@ const Dashboard = () => {
                                   href={href}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="font-medium text-red-500 underline decoration-red-400/60 underline-offset-2"
+                                  className="font-medium text-rose-500 underline decoration-rose-400/60 underline-offset-2 hover:text-rose-400"
                                 >
                                   {children}
                                 </a>
@@ -642,7 +664,7 @@ const Dashboard = () => {
             <button
               type="submit"
               disabled={!input.trim() || isBusyCurrent}
-              className="grid h-12 w-12 place-items-center rounded-xl cursor-pointer bg-linear-to-r from-red-600 to-red-500 text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              className="grid h-12 w-12 place-items-center rounded-xl cursor-pointer bg-linear-to-r from-rose-600 to-rose-500 text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               aria-label="Send message"
             >
               {isBusyCurrent ? (
