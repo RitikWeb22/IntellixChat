@@ -1,14 +1,13 @@
-import { useDispatch } from 'react-redux';
-import { register, login, getMe } from "../services/auth.api"
-import { setUser, setLoading, setError } from "../auth.slice"
-
+import { useDispatch } from "react-redux";
+import { useCallback } from "react";
+import { register, login, getMe } from "../services/auth.api";
+import { setUser, setLoading, setError } from "../auth.slice";
 
 export function useAuth() {
-
     const dispatch = useDispatch();
 
     // handle register
-    async function handleRegister({ username, email, password }) {
+    const handleRegister = useCallback(async ({ username, email, password }) => {
         dispatch(setLoading(true));
         dispatch(setError(null));
         try {
@@ -20,10 +19,10 @@ export function useAuth() {
         } finally {
             dispatch(setLoading(false));
         }
-    }
+    }, [dispatch]);
 
     // handle login
-    async function handleLogin({ email, password }) {
+    const handleLogin = useCallback(async ({ email, password }) => {
         dispatch(setLoading(true));
         dispatch(setError(null));
         try {
@@ -36,10 +35,10 @@ export function useAuth() {
         } finally {
             dispatch(setLoading(false));
         }
-    }
+    }, [dispatch]);
 
     // handle get-me
-    async function handleGetMe() {
+    const handleGetMe = useCallback(async () => {
         try {
             dispatch(setLoading(true));
             const data = await getMe();
@@ -49,12 +48,11 @@ export function useAuth() {
         } finally {
             dispatch(setLoading(false));
         }
-    }
+    }, [dispatch]);
 
     return {
         handleRegister,
         handleLogin,
-        handleGetMe
-    }
-
+        handleGetMe,
+    };
 }

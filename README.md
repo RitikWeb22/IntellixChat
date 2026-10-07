@@ -156,6 +156,7 @@ Open: `http://localhost:5173`
 - `POST /api/chats/message`
 - `GET /api/chats`
 - `GET /api/chats/:chatId/messages`
+- `PATCH /api/chats/:chatId/rename`
 - `DELETE /api/chats/delete/:chatId`
 
 ---

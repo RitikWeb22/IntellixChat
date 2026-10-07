@@ -1,5 +1,5 @@
 import { generateResponse, generateChatTitle } from "../service/ai.service.js";
-import chatModel from "../models/chat.model.js"
+import chatModel from "../models/chat.model.js";
 import messageModel from "../models/message.model.js";
 import { getIO } from "../sockets/server.socket.js";
 
@@ -28,7 +28,7 @@ export async function sendMessage(req, res) {
         // Validate input
         if (!message || !message.trim()) {
             return res.status(400).json({
-                message: "Message content is required"
+                message: "Message content is required",
             });
         }
 
@@ -37,19 +37,19 @@ export async function sendMessage(req, res) {
         if (chatId) {
             chat = await chatModel.findOne({
                 _id: chatId,
-                user: req.user.id,
+                user: req.user.id || req.user.userId,
             });
 
             if (!chat) {
                 return res.status(404).json({
-                    message: "Chat not found"
+                    message: "Chat not found",
                 });
             }
         } else {
             const title = await generateChatTitle(message);
             chat = await chatModel.create({
-                user: req.user.id,
-                title
+                user: req.user.id || req.user.userId,
+                title,
             });
         }
 
@@ -58,10 +58,10 @@ export async function sendMessage(req, res) {
         await messageModel.create({
             chat: activeChatId,
             content: message,
-            role: "user"
+            role: "user",
         });
 
-        const messages = await messageModel.find({ chat: activeChatId });
+        const messages = await messageModel.find({ chat: activeChatId }).sort({ createdAt: 1 });
 
         try {
             const io = getIO();
@@ -77,19 +77,25 @@ export async function sendMessage(req, res) {
             console.error("Socket emit error (typing start):", socketError?.message || socketError);
         }
 
-        const result = await generateResponse(messages, {
-            onStatus: (status) => {
-                try {
-                    const io = getIO();
-                    io.to(String(activeChatId)).emit("ai:status", {
-                        chatId: String(activeChatId),
-                        status,
-                    });
-                } catch (socketError) {
-                    console.error("Socket emit error (status):", socketError?.message || socketError);
-                }
-            },
-        });
+        let result = "";
+        try {
+            result = await generateResponse(messages, {
+                onStatus: (status) => {
+                    try {
+                        const io = getIO();
+                        io.to(String(activeChatId)).emit("ai:status", {
+                            chatId: String(activeChatId),
+                            status,
+                        });
+                    } catch (socketError) {
+                        console.error("Socket emit error (status):", socketError?.message || socketError);
+                    }
+                },
+            });
+        } catch (aiError) {
+            console.error("AI error during generation:", aiError?.message || aiError);
+            result = `I encountered an issue processing your request: ${aiError.message || "Unknown error"}. Please check your AI API key in the backend configuration.`;
+        }
 
         try {
             const io = getIO();
@@ -105,8 +111,11 @@ export async function sendMessage(req, res) {
         const aiMessage = await messageModel.create({
             chat: activeChatId,
             content: result,
-            role: "ai"
+            role: "ai",
         });
+
+        // Update chat updatedAt timestamp
+        await chatModel.findByIdAndUpdate(activeChatId, { updatedAt: new Date() });
 
         try {
             const io = getIO();
@@ -124,30 +133,31 @@ export async function sendMessage(req, res) {
 
         res.status(201).json({
             chat,
-            aiMessage
+            aiMessage,
         });
     } catch (error) {
+        console.error("Send message error:", error);
         res.status(500).json({
             message: "Error sending message",
-            error: error.message
+            error: error.message,
         });
     }
 }
 
 export async function getChats(req, res) {
     try {
-        const user = req.user;
+        const userId = req.user.id || req.user.userId;
 
-        const chats = await chatModel.find({ user: user.id });
+        const chats = await chatModel.find({ user: userId }).sort({ updatedAt: -1 });
 
         res.status(200).json({
             message: "Chats retrieved successfully",
-            chats
+            chats,
         });
     } catch (error) {
         res.status(500).json({
             message: "Error retrieving chats",
-            error: error.message
+            error: error.message,
         });
     }
 }
@@ -155,30 +165,63 @@ export async function getChats(req, res) {
 export async function getMessages(req, res) {
     try {
         const { chatId } = req.params;
+        const userId = req.user.id || req.user.userId;
 
         const chat = await chatModel.findOne({
             _id: chatId,
-            user: req.user.id
+            user: userId,
         });
 
         if (!chat) {
             return res.status(404).json({
-                message: "Chat not found"
+                message: "Chat not found",
             });
         }
 
         const messages = await messageModel.find({
-            chat: chatId
-        });
+            chat: chatId,
+        }).sort({ createdAt: 1 });
 
         res.status(200).json({
             message: "Messages retrieved successfully",
-            messages
+            messages,
         });
     } catch (error) {
         res.status(500).json({
             message: "Error retrieving messages",
-            error: error.message
+            error: error.message,
+        });
+    }
+}
+
+export async function renameChat(req, res) {
+    try {
+        const { chatId } = req.params;
+        const { title } = req.body;
+        const userId = req.user.id || req.user.userId;
+
+        if (!title || !title.trim()) {
+            return res.status(400).json({ message: "Chat title is required" });
+        }
+
+        const chat = await chatModel.findOneAndUpdate(
+            { _id: chatId, user: userId },
+            { title: title.trim(), updatedAt: new Date() },
+            { new: true }
+        );
+
+        if (!chat) {
+            return res.status(404).json({ message: "Chat not found" });
+        }
+
+        res.status(200).json({
+            message: "Chat renamed successfully",
+            chat,
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error renaming chat",
+            error: error.message,
         });
     }
 }
@@ -186,29 +229,30 @@ export async function getMessages(req, res) {
 export async function deleteChat(req, res) {
     try {
         const { chatId } = req.params;
+        const userId = req.user.id || req.user.userId;
 
         const chat = await chatModel.findOneAndDelete({
             _id: chatId,
-            user: req.user.id
+            user: userId,
         });
 
         if (!chat) {
             return res.status(404).json({
-                message: "Chat not found"
+                message: "Chat not found",
             });
         }
 
         await messageModel.deleteMany({
-            chat: chatId
+            chat: chatId,
         });
 
         res.status(200).json({
-            message: "Chat deleted successfully"
+            message: "Chat deleted successfully",
         });
     } catch (error) {
         res.status(500).json({
             message: "Error deleting chat",
-            error: error.message
+            error: error.message,
         });
     }
 }

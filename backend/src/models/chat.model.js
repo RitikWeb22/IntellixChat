@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { de } from "zod/v4/locales";
 
 const chatSchema = new mongoose.Schema(
     {

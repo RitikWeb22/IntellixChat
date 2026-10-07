@@ -24,47 +24,55 @@ const chatSlice = createSlice({
             };
         },
 
+        updateChatTitle: (state, action) => {
+            const { chatId, title } = action.payload;
+            if (state.chats[chatId]) {
+                state.chats[chatId].title = title;
+                state.chats[chatId].lastUpdated = new Date().toISOString();
+            }
+        },
+
         addNewMessage: (state, action) => {
-            const { chatId, content, role } = action.payload
+            const { chatId, content, role } = action.payload;
             if (!state.chats[chatId]) {
                 state.chats[chatId] = {
                     id: chatId,
                     title: "New Conversation",
                     messages: [],
                     lastUpdated: new Date().toISOString(),
-                }
+                };
             }
             if (!Array.isArray(state.chats[chatId].messages)) {
-                state.chats[chatId].messages = []
+                state.chats[chatId].messages = [];
             }
-            state.chats[chatId].messages.push({ content, role })
+            state.chats[chatId].messages.push({ content, role });
         },
         addMessages: (state, action) => {
-            const { chatId, messages } = action.payload
+            const { chatId, messages } = action.payload;
             if (!state.chats[chatId]) {
                 state.chats[chatId] = {
                     id: chatId,
                     title: "New Conversation",
                     messages: [],
                     lastUpdated: new Date().toISOString(),
-                }
+                };
             }
             if (!Array.isArray(state.chats[chatId].messages)) {
-                state.chats[chatId].messages = []
+                state.chats[chatId].messages = [];
             }
-            state.chats[chatId].messages.push(...messages)
+            state.chats[chatId].messages.push(...messages);
         },
         setChatMessages: (state, action) => {
-            const { chatId, messages } = action.payload
+            const { chatId, messages } = action.payload;
             if (!state.chats[chatId]) {
                 state.chats[chatId] = {
                     id: chatId,
                     title: "New Conversation",
                     messages: [],
                     lastUpdated: new Date().toISOString(),
-                }
+                };
             }
-            state.chats[chatId].messages = Array.isArray(messages) ? messages : []
+            state.chats[chatId].messages = Array.isArray(messages) ? messages : [];
         },
         setChats: (state, action) => {
             state.chats = action.payload;
@@ -115,7 +123,6 @@ const chatSlice = createSlice({
     },
 });
 
-
 export const {
     setChats,
     setCurrentChatId,
@@ -128,10 +135,9 @@ export const {
     setMessagesLoading,
     setError,
     createNewChat,
+    updateChatTitle,
     addMessages,
     addNewMessage,
     setChatMessages,
 } = chatSlice.actions;
 export default chatSlice.reducer;
-
-

@@ -11,6 +11,7 @@ import {
     getChats,
     getMessages,
     deleteChat,
+    renameChat,
 } from "../services/chat.api";
 import {
     setChats,
@@ -24,11 +25,12 @@ import {
     setLoading,
     setMessagesLoading,
     createNewChat,
+    updateChatTitle,
     addNewMessage,
     setChatMessages,
 } from "../chat.slice";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 export const useChat = () => {
     const dispatch = useDispatch();
@@ -74,9 +76,8 @@ export const useChat = () => {
         return "assistant";
     }
 
-    async function handleSendMessage({ message, chatId }) {
+    const handleSendMessage = useCallback(async ({ message, chatId }) => {
         try {
-            // Use chatId if provided, otherwise currentChatId. If both are null, create new chat.
             const effectiveChatId = chatId || currentChatId;
             const payload = effectiveChatId
                 ? { message, chatId: effectiveChatId }
@@ -142,21 +143,21 @@ export const useChat = () => {
             );
             return null;
         }
-    }
+    }, [currentChatId, dispatch]);
 
-    async function handleGetChats() {
+    const handleGetChats = useCallback(async () => {
         dispatch(setLoading(true));
         try {
             const data = await getChats();
-            const { chats } = data;
+            const { chats: fetchedChats } = data;
             dispatch(
                 setChats(
-                    chats.reduce((acc, chat) => {
-                        acc[chat._id] = {
-                            id: chat._id,
-                            title: chat.title,
+                    fetchedChats.reduce((acc, c) => {
+                        acc[c._id] = {
+                            id: c._id,
+                            title: c.title,
                             messages: [],
-                            lastUpdated: chat.updatedAt,
+                            lastUpdated: c.updatedAt,
                         };
                         return acc;
                     }, {})
@@ -169,12 +170,11 @@ export const useChat = () => {
         } finally {
             dispatch(setLoading(false));
         }
-    }
+    }, [dispatch]);
 
-    async function handleOpenChat(chatId) {
+    const handleOpenChat = useCallback(async (chatId) => {
         if (!chatId) return;
 
-        // Avoid refetch flicker when active chat is already loaded.
         if (chatId === currentChatId && Array.isArray(chats[chatId]?.messages) && chats[chatId].messages.length > 0) {
             return;
         }
@@ -182,9 +182,9 @@ export const useChat = () => {
         dispatch(setMessagesLoading(true));
         try {
             const data = await getMessages(chatId);
-            const { messages } = data;
+            const { messages: fetchedMessages } = data;
 
-            const formattedMessages = messages.map((msg) => ({
+            const formattedMessages = fetchedMessages.map((msg) => ({
                 content: msg.content,
                 role: normalizeRole(msg.role),
             }));
@@ -203,9 +203,19 @@ export const useChat = () => {
         } finally {
             dispatch(setMessagesLoading(false));
         }
-    }
+    }, [chats, currentChatId, dispatch]);
 
-    async function handleDeleteChat(chatId) {
+    const handleRenameChat = useCallback(async (chatId, newTitle) => {
+        if (!chatId || !newTitle?.trim()) return;
+        try {
+            await renameChat(chatId, newTitle.trim());
+            dispatch(updateChatTitle({ chatId, title: newTitle.trim() }));
+        } catch (error) {
+            dispatch(setError(error.response?.data?.message || "Failed to rename chat"));
+        }
+    }, [dispatch]);
+
+    const handleDeleteChat = useCallback(async (chatId) => {
         if (!chatId) return;
         try {
             await deleteChat(chatId);
@@ -215,13 +225,14 @@ export const useChat = () => {
                 setError(error.response?.data?.message || "Failed to delete chat")
             );
         }
-    }
+    }, [dispatch]);
 
     return {
         initializeSocketConnection,
         handleSendMessage,
         handleGetChats,
         handleOpenChat,
+        handleRenameChat,
         handleDeleteChat,
     };
 };

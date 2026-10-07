@@ -3,13 +3,14 @@ import { router } from "./app.route";
 import { useAuth } from "../features/auth/hooks/useAuth";
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
+
 function App() {
-  const auth = useAuth();
+  const { handleGetMe } = useAuth();
   const themeMode = useSelector((state) => state.theme.mode);
 
   useEffect(() => {
-    auth.handleGetMe();
-  }, []);
+    handleGetMe();
+  }, [handleGetMe]);
 
   useEffect(() => {
     document.documentElement.classList.toggle(
