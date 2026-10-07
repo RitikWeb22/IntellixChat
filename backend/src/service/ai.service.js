@@ -8,8 +8,7 @@ import { sendEmail } from "./email.service.js";
 
 const activeGeminiKey =
     process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GEMINI_API_KEY ||
-    "AIzaSyB1I-PBr7o8SoS2p7bSPzkCp2YB1oPjV0M";
+    process.env.GOOGLE_GEMINI_API_KEY;
 
 const hasGeminiKey = Boolean(
     activeGeminiKey &&
@@ -128,11 +127,13 @@ function buildAgentMessages(messages) {
 }
 
 // Quick local responder when external APIs are unconfigured or fail
-function getFallbackSmartResponse(lastUserMessage) {
+async function getFallbackSmartResponse(messages) {
+    const lastUserMessage = messages[messages.length - 1]?.content || "";
     const text = (lastUserMessage || "").toLowerCase().trim();
+    const fullConversationText = messages.map((m) => m.content || "").join(" ").toLowerCase();
 
     if (/^(hi|hello|hey|namaste|greetings)\b/.test(text)) {
-        return "👋 Hello! I am **Intellix AI**. How can I help you today? You can ask me to search the web, analyze data, perform math calculations, or explore topics!";
+        return "👋 Hello! I am **Intellix AI**. How can I help you today? You can ask me to search the web, find places on Google Maps, analyze data, or perform math calculations!";
     }
 
     if (/\b(time|date|day|what time|aaj ki date)\b/.test(text)) {
@@ -150,6 +151,66 @@ function getFallbackSmartResponse(lastUserMessage) {
                 return `🔢 **Calculation Result**:\n\`${clean} = ${res}\``;
             }
         } catch (_) {}
+    }
+
+    // Places / Coffee / Locations / Maps
+    const isPlaceQuery =
+        fullConversationText.includes("coffee") ||
+        fullConversationText.includes("cafe") ||
+        fullConversationText.includes("restaurant") ||
+        fullConversationText.includes("food") ||
+        fullConversationText.includes("places near") ||
+        fullConversationText.includes("maps link") ||
+        text.includes("delhi") ||
+        text.includes("mumbai") ||
+        text.includes("bangalore") ||
+        text.includes("near me");
+
+    if (isPlaceQuery) {
+        try {
+            const locationTerm = text.length > 2 ? lastUserMessage : "nearby";
+            const category = fullConversationText.includes("coffee") || fullConversationText.includes("cafe") ? "coffee shops" : "restaurants";
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${category} in ${locationTerm}`)}`;
+
+            const rawSearch = await searchInternet({ query: `best ${category} in ${locationTerm}` });
+            const parsed = JSON.parse(rawSearch);
+
+            let reply = `☕ **Top ${category === "coffee shops" ? "Coffee Shops" : "Places"} in ${locationTerm}**\n\n`;
+            reply += `🗺️ **[View on Google Maps](${mapsUrl})**\n\n`;
+
+            if (parsed.results && parsed.results.length > 0) {
+                reply += `Here are popular recommendations based on live web ratings:\n\n`;
+                parsed.results.slice(0, 4).forEach((r, idx) => {
+                    reply += `**${idx + 1}. [${r.title}](${r.url})**\n${r.content.slice(0, 180)}...\n\n`;
+                });
+            } else {
+                reply += `1. **Blue Tokai Coffee Roasters** - Premium specialty coffee with artisan brews.\n`;
+                reply += `2. **Third Wave Coffee** - Great ambiance, sandwiches, and handcrafted lattes.\n`;
+                reply += `3. **Cafe Coffee Day** - Classic hangout cafe.\n\n`;
+            }
+
+            reply += `> 💡 Tip: Click the [Google Maps Link](${mapsUrl}) above for real-time directions and reviews!`;
+            return reply;
+        } catch (e) {
+            console.warn("Places fallback error:", e.message);
+        }
+    }
+
+    // Live Web Search queries
+    if (/^(search|who is|what is|find|latest|news|how to|explain|weather)\b/i.test(text) || text.length > 20) {
+        try {
+            const rawSearch = await searchInternet({ query: lastUserMessage });
+            const parsed = JSON.parse(rawSearch);
+            if (parsed.results && parsed.results.length > 0) {
+                let reply = `🌐 **Live Web Information for:** *"${lastUserMessage}"*\n\n`;
+                parsed.results.slice(0, 3).forEach((r, idx) => {
+                    reply += `### ${idx + 1}. [${r.title}](${r.url})\n${r.content}\n\n`;
+                });
+                return reply;
+            }
+        } catch (e) {
+            console.warn("Search fallback error:", e.message);
+        }
     }
 
     return null;
@@ -216,7 +277,7 @@ export async function generateResponse(messages, options = {}) {
     }
 
     // Smart Local Fallback
-    const localAnswer = getFallbackSmartResponse(lastMessage);
+    const localAnswer = await getFallbackSmartResponse(messages);
     if (localAnswer) {
         return localAnswer;
     }
