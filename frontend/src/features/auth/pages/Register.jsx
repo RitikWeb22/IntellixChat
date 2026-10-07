@@ -70,7 +70,8 @@ export default function Register() {
       });
       navigate("/login", { state: { registeredEmail: email.trim() } });
     } catch (error) {
-      const msg = error.response?.data?.message || error.message || "Registration failed. Please try again.";
+      const data = error.response?.data;
+      const msg = data?.message || data?.errors?.[0]?.msg || error.message || "Registration failed. Please try again.";
       setErrors({ submit: msg });
     } finally {
       setLoading(false);

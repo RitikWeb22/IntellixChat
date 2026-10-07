@@ -1,10 +1,15 @@
 import { body, validationResult } from "express-validator";
 
-
 export function validate(req, res, next) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        const errorList = errors.array();
+        const firstMessage = errorList[0]?.msg || "Validation failed";
+        return res.status(400).json({
+            message: firstMessage,
+            errors: errorList,
+            success: false,
+        });
     }
     next();
 }
@@ -14,29 +19,28 @@ export const registerValidator = [
         .trim()
         .notEmpty().withMessage("Username is required")
         .isLength({ min: 3, max: 30 }).withMessage("Username must be between 3 and 30 characters")
-        .matches(/^[a-zA-Z0-9_]+$/).withMessage("Username can only contain letters, numbers, and underscores"),
+        .matches(/^[a-zA-Z0-9_-]+$/).withMessage("Username can only contain letters, numbers, hyphens, and underscores"),
 
     body("email")
         .trim()
         .notEmpty().withMessage("Email is required")
-        .isEmail().withMessage("Please provide a valid email"),
+        .isEmail().withMessage("Please provide a valid email address"),
 
     body("password")
         .notEmpty().withMessage("Password is required")
         .isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
 
-    validate
+    validate,
 ];
 
 export const loginValidator = [
     body("email")
         .trim()
         .notEmpty().withMessage("Email is required")
-        .isEmail().withMessage("Please provide a valid email"),
+        .isEmail().withMessage("Please provide a valid email address"),
 
     body("password")
         .notEmpty().withMessage("Password is required"),
 
-    validate
+    validate,
 ];
-

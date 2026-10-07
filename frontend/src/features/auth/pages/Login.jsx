@@ -57,7 +57,8 @@ export default function Login() {
       await handleLogin({ email: email.trim(), password });
       navigate("/");
     } catch (error) {
-      const msg = error.response?.data?.message || error.message || "Login failed. Please check your credentials.";
+      const data = error.response?.data;
+      const msg = data?.message || data?.errors?.[0]?.msg || error.message || "Login failed. Please check your credentials.";
       setErrors({ submit: msg });
     } finally {
       setLoading(false);
