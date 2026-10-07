@@ -11,6 +11,15 @@ export function initializeSocketConnection() {
         ? ""
         : (import.meta.env.VITE_API_URL || "https://intellix-chat-bacend.vercel.app");
 
+    // Vercel Serverless functions do NOT support persistent WebSockets/Socket.IO.
+    // If target host is on vercel.app, do not attempt WebSocket connection to eliminate browser errors.
+    if (
+        typeof window !== "undefined" &&
+        (socketUrl.includes("vercel.app") || window.location.hostname.includes("vercel.app"))
+    ) {
+        return null;
+    }
+
     try {
         socket = io(socketUrl, {
             withCredentials: true,

@@ -161,7 +161,7 @@ export async function generateResponse(messages, options = {}) {
         try {
             onStatus?.("Consulting Gemini AI...");
             const geminiModel = new ChatGoogleGenerativeAI({
-                model: "gemini-1.5-flash",
+                model: "gemini-2.5-flash",
                 apiKey: process.env.GEMINI_API_KEY,
                 maxOutputTokens: 2048,
             });

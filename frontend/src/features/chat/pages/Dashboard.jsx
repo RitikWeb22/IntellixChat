@@ -35,7 +35,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { atomDark, prism } from "react-syntax-highlighter/dist/esm/styles/prism";
 import logo from "../../../assets/logo.svg";
 import { useChat } from "../hooks/useChat";
 import { logout } from "../../auth/services/auth.api";
@@ -74,17 +74,33 @@ const CodeBlock = ({ inline, className, children }) => {
   const codeString = String(children).replace(/\n$/, "");
 
   return (
-    <div className="relative my-3 rounded-xl overflow-hidden border border-zinc-700/60 shadow-md">
-      <div className="flex items-center justify-between px-3.5 py-1.5 bg-zinc-900 border-b border-zinc-800 text-xs text-zinc-400">
+    <div
+      className={`relative my-3 rounded-xl overflow-hidden border shadow-md ${
+        isLightMode
+          ? "border-slate-200 bg-slate-50"
+          : "border-zinc-800 bg-[#0b0f17]"
+      }`}
+    >
+      <div
+        className={`flex items-center justify-between px-3.5 py-1.5 text-xs border-b ${
+          isLightMode
+            ? "bg-slate-100 border-slate-200 text-slate-600"
+            : "bg-zinc-900 border-zinc-800 text-zinc-400"
+        }`}
+      >
         <span className="font-mono uppercase tracking-wider">{language}</span>
         <button
           onClick={handleCopy}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-zinc-300 hover:text-white hover:bg-zinc-800 transition text-xs cursor-pointer"
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded transition text-xs cursor-pointer ${
+            isLightMode
+              ? "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+              : "text-zinc-300 hover:text-white hover:bg-zinc-800"
+          }`}
         >
           {copied ? (
             <>
-              <Check size={12} className="text-emerald-400" />
-              <span className="text-emerald-400">Copied</span>
+              <Check size={12} className="text-emerald-500" />
+              <span className="text-emerald-500">Copied</span>
             </>
           ) : (
             <>
@@ -96,12 +112,12 @@ const CodeBlock = ({ inline, className, children }) => {
       </div>
       <SyntaxHighlighter
         language={language}
-        style={atomDark}
+        style={isLightMode ? prism : atomDark}
         customStyle={{
           margin: 0,
           padding: "1rem",
           fontSize: "0.85rem",
-          backgroundColor: "#0b0f17",
+          backgroundColor: isLightMode ? "#f8fafc" : "#0b0f17",
           lineHeight: "1.5",
         }}
       >
@@ -359,9 +375,14 @@ const Dashboard = () => {
     }
   };
 
-  // Group chats by date (Today, Yesterday, Previous 7 Days, Older)
+  // Group chats chronologically (Today, Yesterday, Previous 7 Days, Older)
   const groupedChats = useMemo(() => {
-    const chatList = Object.values(chats);
+    const chatList = Object.values(chats).sort((a, b) => {
+      const timeA = new Date(a.lastUpdated || a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.lastUpdated || b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+
     const filtered = searchQuery.trim()
       ? chatList.filter((c) =>
           (c.title || "").toLowerCase().includes(searchQuery.toLowerCase().trim())
@@ -381,7 +402,7 @@ const Dashboard = () => {
     };
 
     filtered.forEach((c) => {
-      const time = new Date(c.lastUpdated || c.updatedAt || Date.now()).getTime();
+      const time = new Date(c.lastUpdated || c.updatedAt || c.createdAt || Date.now()).getTime();
       if (time >= todayStart) {
         groups.Today.push(c);
       } else if (time >= yesterdayStart) {
@@ -397,19 +418,37 @@ const Dashboard = () => {
   }, [chats, searchQuery]);
 
   return (
-    <div className={`relative flex h-dvh w-full overflow-hidden ${isLightMode ? "bg-slate-100 text-slate-900" : "bg-[#090d16] text-zinc-100"}`}>
+    <div
+      className={`relative flex h-dvh w-full overflow-hidden transition-colors duration-200 ${
+        isLightMode ? "bg-slate-50 text-slate-900" : "bg-[#080b11] text-zinc-100"
+      }`}
+    >
       {/* Delete Confirmation Modal */}
       {chatToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl text-white">
+          <div
+            className={`w-full max-w-sm rounded-2xl p-6 shadow-2xl border ${
+              isLightMode
+                ? "bg-white border-slate-200 text-slate-900"
+                : "bg-zinc-900 border-zinc-800 text-white"
+            }`}
+          >
             <h3 className="text-base font-semibold">Delete Chat?</h3>
-            <p className="mt-2 text-xs text-zinc-400">
+            <p
+              className={`mt-2 text-xs ${
+                isLightMode ? "text-slate-500" : "text-zinc-400"
+              }`}
+            >
               This conversation will be permanently deleted from your history.
             </p>
             <div className="mt-6 flex justify-end gap-2.5">
               <button
                 onClick={() => setChatToDelete(null)}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition cursor-pointer"
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                  isLightMode
+                    ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                }`}
               >
                 Cancel
               </button>
@@ -441,19 +480,36 @@ const Dashboard = () => {
         } ${
           isLightMode
             ? "bg-white border-r border-slate-200 shadow-sm"
-            : "bg-[#0c1220] border-r border-zinc-800/80 backdrop-blur-xl"
+            : "bg-[#0b0f19] border-r border-zinc-800/80 backdrop-blur-xl"
         }`}
       >
         {/* Top Header */}
-        <div className="p-3.5 border-b border-zinc-800/50">
+        <div
+          className={`p-3.5 border-b ${
+            isLightMode ? "border-slate-200" : "border-zinc-800/60"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700/60 shadow-xs">
+              <div
+                className={`flex items-center justify-center w-8 h-8 rounded-xl border shadow-xs ${
+                  isLightMode
+                    ? "bg-slate-100 border-slate-300"
+                    : "bg-zinc-900 border-zinc-700/60"
+                }`}
+              >
                 <img src={logo} alt="Intellix" className="h-4 w-auto" />
               </div>
               <div>
-                <span className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
-                  Intellix <span className="text-[10px] font-semibold text-rose-500 uppercase tracking-widest bg-rose-500/10 px-1.5 py-0.5 rounded">AI</span>
+                <span
+                  className={`text-sm font-bold tracking-tight flex items-center gap-1.5 ${
+                    isLightMode ? "text-slate-900" : "text-white"
+                  }`}
+                >
+                  Intellix{" "}
+                  <span className="text-[10px] font-semibold text-rose-500 uppercase tracking-widest bg-rose-500/10 px-1.5 py-0.5 rounded">
+                    AI
+                  </span>
                 </span>
               </div>
             </div>
@@ -461,14 +517,20 @@ const Dashboard = () => {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setSidebarCollapsedDesktop(true)}
-                className="hidden md:grid place-items-center w-7 h-7 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition cursor-pointer"
+                className={`hidden md:grid place-items-center w-7 h-7 rounded-lg transition cursor-pointer ${
+                  isLightMode
+                    ? "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+                }`}
                 title="Collapse sidebar"
               >
                 <PanelLeftClose size={15} />
               </button>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="md:hidden grid place-items-center w-7 h-7 rounded-lg text-zinc-400 hover:text-white"
+                className={`md:hidden grid place-items-center w-7 h-7 rounded-lg ${
+                  isLightMode ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"
+                }`}
               >
                 <X size={16} />
               </button>
@@ -484,12 +546,19 @@ const Dashboard = () => {
               <Plus size={15} />
               <span>New Conversation</span>
             </span>
-            <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded text-white/80 font-mono">⌘N</span>
+            <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded text-white/90 font-mono">
+              ⌘N
+            </span>
           </button>
 
           {/* Search Box */}
           <div className="mt-2.5 relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <Search
+              size={13}
+              className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                isLightMode ? "text-slate-400" : "text-zinc-500"
+              }`}
+            />
             <input
               type="text"
               value={searchQuery}
@@ -497,14 +566,18 @@ const Dashboard = () => {
               placeholder="Search history..."
               className={`w-full rounded-xl pl-8 pr-7 py-1.5 text-xs outline-none transition ${
                 isLightMode
-                  ? "bg-slate-100 text-slate-800 placeholder-slate-400 border border-slate-200"
+                  ? "bg-slate-100 text-slate-800 placeholder-slate-400 border border-slate-200 focus:border-rose-400"
                   : "bg-zinc-900/80 text-zinc-200 placeholder-zinc-500 border border-zinc-800 focus:border-zinc-700"
               }`}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                className={`absolute right-2 top-1/2 -translate-y-1/2 ${
+                  isLightMode
+                    ? "text-slate-400 hover:text-slate-600"
+                    : "text-zinc-400 hover:text-white"
+                }`}
               >
                 <X size={12} />
               </button>
@@ -518,8 +591,11 @@ const Dashboard = () => {
             if (chatItems.length === 0) return null;
             return (
               <div key={groupTitle} className="space-y-1">
-                <div className="px-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  {groupTitle}
+                <div className="flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  <span>{groupTitle}</span>
+                  <span className="text-[9px] px-1 rounded bg-zinc-500/10">
+                    {chatItems.length}
+                  </span>
                 </div>
 
                 {chatItems.map((item) => {
@@ -532,20 +608,27 @@ const Dashboard = () => {
                       className={`group relative flex items-center rounded-xl text-xs transition ${
                         isActive
                           ? isLightMode
-                            ? "bg-rose-50 text-rose-600 font-medium border border-rose-200"
+                            ? "bg-rose-50 text-rose-700 font-medium border border-rose-200"
                             : "bg-zinc-800/90 text-rose-300 font-medium border border-rose-500/30"
                           : isLightMode
-                            ? "text-slate-700 hover:bg-slate-100"
+                            ? "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                             : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
                       }`}
                     >
                       {isEditing ? (
-                        <div className="flex items-center w-full p-1.5 gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="flex items-center w-full p-1.5 gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="text"
                             value={editingTitle}
                             onChange={(e) => setEditingTitle(e.target.value)}
-                            className="flex-1 bg-zinc-950 text-white text-xs px-2 py-1 rounded-lg border border-rose-500 outline-none"
+                            className={`flex-1 text-xs px-2 py-1 rounded-lg border border-rose-500 outline-none ${
+                              isLightMode
+                                ? "bg-white text-slate-900"
+                                : "bg-zinc-950 text-white"
+                            }`}
                             autoFocus
                             onKeyDown={(e) => {
                               if (e.key === "Enter") handleSaveRename(e, item.id);
@@ -554,7 +637,7 @@ const Dashboard = () => {
                           />
                           <button
                             onClick={(e) => handleSaveRename(e, item.id)}
-                            className="p-1 rounded text-emerald-400 hover:bg-emerald-500/20"
+                            className="p-1 rounded text-emerald-500 hover:bg-emerald-500/20"
                           >
                             <Check size={13} />
                           </button>
@@ -575,7 +658,14 @@ const Dashboard = () => {
                             }}
                             className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left cursor-pointer"
                           >
-                            <MessageSquare size={14} className={isActive ? "text-rose-500 shrink-0" : "opacity-60 shrink-0"} />
+                            <MessageSquare
+                              size={14}
+                              className={
+                                isActive
+                                  ? "text-rose-500 shrink-0"
+                                  : "opacity-60 shrink-0"
+                              }
+                            />
                             <span className="truncate">{item.title}</span>
                           </button>
 
@@ -583,7 +673,11 @@ const Dashboard = () => {
                           <div className="flex items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition">
                             <button
                               onClick={(e) => handleStartRename(e, item)}
-                              className="p-1 rounded hover:bg-zinc-700/50 text-zinc-400 hover:text-white transition cursor-pointer"
+                              className={`p-1 rounded transition cursor-pointer ${
+                                isLightMode
+                                  ? "text-slate-400 hover:text-slate-800 hover:bg-slate-200"
+                                  : "text-zinc-400 hover:text-white hover:bg-zinc-700/50"
+                              }`}
                               title="Rename"
                             >
                               <Edit2 size={12} />
@@ -593,7 +687,7 @@ const Dashboard = () => {
                                 e.stopPropagation();
                                 setChatToDelete(item.id);
                               }}
-                              className="p-1 rounded hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 transition cursor-pointer"
+                              className="p-1 rounded hover:bg-rose-500/20 text-zinc-400 hover:text-rose-500 transition cursor-pointer"
                               title="Delete"
                             >
                               <Trash2 size={12} />
@@ -609,28 +703,54 @@ const Dashboard = () => {
           })}
 
           {Object.values(groupedChats).every((arr) => arr.length === 0) && (
-            <div className="py-12 text-center text-xs text-zinc-400">
+            <div
+              className={`py-12 text-center text-xs ${
+                isLightMode ? "text-slate-400" : "text-zinc-500"
+              }`}
+            >
               {searchQuery ? "No matching chats found." : "No chat history yet."}
             </div>
           )}
         </div>
 
         {/* User Profile & Sign Out Footer */}
-        <div className="p-3 border-t border-zinc-800/60 bg-black/10">
+        <div
+          className={`p-3 border-t ${
+            isLightMode
+              ? "bg-slate-50 border-slate-200"
+              : "bg-black/20 border-zinc-800/60"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="grid h-7 w-7 place-items-center rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold">
+              <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 text-white text-xs font-bold shadow-xs">
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium truncate text-white">{displayName}</p>
-                <p className="text-[10px] text-zinc-400 truncate">Free Plan</p>
+                <p
+                  className={`text-xs font-medium truncate ${
+                    isLightMode ? "text-slate-800" : "text-white"
+                  }`}
+                >
+                  {displayName}
+                </p>
+                <p
+                  className={`text-[10px] truncate ${
+                    isLightMode ? "text-slate-400" : "text-zinc-500"
+                  }`}
+                >
+                  Free Tier
+                </p>
               </div>
             </div>
 
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                isLightMode
+                  ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                  : "text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10"
+              }`}
               title="Sign Out"
             >
               <LogOut size={14} />
@@ -642,12 +762,22 @@ const Dashboard = () => {
       {/* MAIN WORKSPACE CHAT AREA */}
       <main className="flex min-w-0 flex-1 flex-col relative h-full">
         {/* Top Navbar */}
-        <header className="flex h-13 items-center justify-between border-b border-zinc-800/60 px-4">
+        <header
+          className={`flex h-13 items-center justify-between border-b px-4 transition-colors ${
+            isLightMode
+              ? "bg-white/80 border-slate-200/80 backdrop-blur-md"
+              : "bg-[#080b11]/80 border-zinc-800/60 backdrop-blur-md"
+          }`}
+        >
           <div className="flex items-center gap-2.5 min-w-0">
             {/* Sidebar toggle buttons */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden grid place-items-center w-8 h-8 rounded-lg text-zinc-300 hover:bg-zinc-800 transition"
+              className={`md:hidden grid place-items-center w-8 h-8 rounded-lg transition ${
+                isLightMode
+                  ? "text-slate-600 hover:bg-slate-100"
+                  : "text-zinc-300 hover:bg-zinc-800"
+              }`}
             >
               <Menu size={18} />
             </button>
@@ -655,7 +785,11 @@ const Dashboard = () => {
             {sidebarCollapsedDesktop && (
               <button
                 onClick={() => setSidebarCollapsedDesktop(false)}
-                className="hidden md:grid place-items-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+                className={`hidden md:grid place-items-center w-8 h-8 rounded-lg transition cursor-pointer ${
+                  isLightMode
+                    ? "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                }`}
                 title="Expand sidebar"
               >
                 <PanelLeftOpen size={17} />
@@ -663,11 +797,15 @@ const Dashboard = () => {
             )}
 
             <div className="min-w-0 flex items-center gap-2">
-              <span className="text-xs font-semibold truncate text-white">
-                {chats[currentChatId]?.title || "New Chat"}
+              <span
+                className={`text-xs font-semibold truncate ${
+                  isLightMode ? "text-slate-800" : "text-white"
+                }`}
+              >
+                {chats[currentChatId]?.title || "New Conversation"}
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Intellix AI 2.0
               </span>
             </div>
@@ -677,7 +815,11 @@ const Dashboard = () => {
             {messages.length > 0 && (
               <button
                 onClick={handleExportChat}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition cursor-pointer"
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  isLightMode
+                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                }`}
                 title="Export as Markdown"
               >
                 <Download size={13} />
@@ -687,7 +829,11 @@ const Dashboard = () => {
 
             <button
               onClick={() => dispatch(toggleTheme())}
-              className="grid h-8 w-8 place-items-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+              className={`grid h-8 w-8 place-items-center rounded-lg transition cursor-pointer ${
+                isLightMode
+                  ? "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
               title={`Switch to ${isLightMode ? "Dark" : "Light"} Mode`}
             >
               {isLightMode ? <Moon size={15} /> : <Sun size={15} />}
@@ -702,16 +848,28 @@ const Dashboard = () => {
             <div className="chat-scrollbar flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto p-4 sm:p-8">
               <div className="mx-auto max-w-xl text-center">
                 <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-600 to-rose-400 p-0.5 shadow-xl shadow-rose-950/30">
-                  <div className="flex h-full w-full items-center justify-center rounded-2xl bg-zinc-950">
+                  <div
+                    className={`flex h-full w-full items-center justify-center rounded-2xl ${
+                      isLightMode ? "bg-white" : "bg-zinc-950"
+                    }`}
+                  >
                     <Bot size={26} className="text-rose-500 animate-pulse" />
                   </div>
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                <h2
+                  className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
+                    isLightMode ? "text-slate-900" : "text-white"
+                  }`}
+                >
                   How can I help you today?
                 </h2>
-                <p className="mt-1.5 text-xs sm:text-sm text-zinc-400">
-                  Search the live web, read articles, draft emails, compute formulas, or explore places.
+                <p
+                  className={`mt-1.5 text-xs sm:text-sm ${
+                    isLightMode ? "text-slate-500" : "text-zinc-400"
+                  }`}
+                >
+                  Search live web, read articles, draft emails, compute formulas, or explore places.
                 </p>
 
                 {/* Quick Prompts Grid */}
@@ -759,14 +917,30 @@ const Dashboard = () => {
                       <button
                         key={p.title}
                         onClick={() => handlePromptClick(p.prompt)}
-                        className="flex items-start gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3 text-left hover:border-rose-500/40 hover:bg-zinc-800/60 transition cursor-pointer"
+                        className={`flex items-start gap-3 rounded-xl border p-3 text-left transition cursor-pointer ${
+                          isLightMode
+                            ? "border-slate-200 bg-white hover:border-rose-400 hover:shadow-md"
+                            : "border-zinc-800/80 bg-zinc-900/50 hover:border-rose-500/40 hover:bg-zinc-800/60"
+                        }`}
                       >
-                        <div className="grid h-7 w-7 place-items-center rounded-lg bg-rose-500/10 text-rose-400 shrink-0">
+                        <div className="grid h-7 w-7 place-items-center rounded-lg bg-rose-500/10 text-rose-500 shrink-0">
                           <Icon size={14} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-zinc-200">{p.title}</p>
-                          <p className="text-[11px] text-zinc-400 truncate">{p.desc}</p>
+                          <p
+                            className={`text-xs font-semibold ${
+                              isLightMode ? "text-slate-800" : "text-zinc-200"
+                            }`}
+                          >
+                            {p.title}
+                          </p>
+                          <p
+                            className={`text-[11px] truncate ${
+                              isLightMode ? "text-slate-500" : "text-zinc-400"
+                            }`}
+                          >
+                            {p.desc}
+                          </p>
                         </div>
                       </button>
                     );
@@ -786,8 +960,18 @@ const Dashboard = () => {
                   <div className="space-y-3 py-4">
                     {[1, 2].map((i) => (
                       <div key={i} className="flex gap-3">
-                        <div className="h-8 w-8 rounded-full bg-zinc-800 animate-pulse shrink-0" />
-                        <div className="h-16 flex-1 rounded-2xl bg-zinc-900 border border-zinc-800 animate-pulse" />
+                        <div
+                          className={`h-8 w-8 rounded-full animate-pulse shrink-0 ${
+                            isLightMode ? "bg-slate-200" : "bg-zinc-800"
+                          }`}
+                        />
+                        <div
+                          className={`h-16 flex-1 rounded-2xl border animate-pulse ${
+                            isLightMode
+                              ? "bg-white border-slate-200"
+                              : "bg-zinc-900 border-zinc-800"
+                          }`}
+                        />
                       </div>
                     ))}
                   </div>
@@ -797,7 +981,10 @@ const Dashboard = () => {
                   const isUser = m.role === "user";
 
                   return (
-                    <div key={`${m.role}-${idx}`} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+                    <div
+                      key={`${m.role}-${idx}`}
+                      className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+                    >
                       {!isUser && (
                         <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 text-white shrink-0 shadow-md shadow-rose-950/40">
                           <Sparkles size={15} />
@@ -810,7 +997,7 @@ const Dashboard = () => {
                             ? "bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-md shadow-rose-950/30"
                             : isLightMode
                               ? "bg-white text-slate-800 border border-slate-200 shadow-xs"
-                              : "bg-[#111827] text-zinc-100 border border-zinc-800/80 shadow-md"
+                              : "bg-[#101623] text-zinc-100 border border-zinc-800/80 shadow-md"
                         }`}
                       >
                         {isUser ? (
@@ -821,7 +1008,11 @@ const Dashboard = () => {
                               className="opacity-0 group-hover:opacity-100 p-0.5 text-white/70 hover:text-white transition cursor-pointer shrink-0"
                               title="Copy"
                             >
-                              {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
+                              {copiedIndex === idx ? (
+                                <Check size={12} />
+                              ) : (
+                                <Copy size={12} />
+                              )}
                             </button>
                           </div>
                         ) : (
@@ -836,7 +1027,7 @@ const Dashboard = () => {
                                       href={href}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="font-medium text-rose-400 underline decoration-rose-400/40 hover:text-rose-300"
+                                      className="font-medium text-rose-500 underline decoration-rose-500/40 hover:text-rose-600"
                                     >
                                       {children}
                                     </a>
@@ -848,16 +1039,29 @@ const Dashboard = () => {
                             </div>
 
                             {/* Assistant Footer Actions */}
-                            <div className="mt-2.5 flex items-center gap-1 border-t border-zinc-800/50 pt-1.5 text-zinc-400">
+                            <div
+                              className={`mt-2.5 flex items-center gap-1 border-t pt-1.5 ${
+                                isLightMode
+                                  ? "border-slate-100 text-slate-500"
+                                  : "border-zinc-800/50 text-zinc-400"
+                              }`}
+                            >
                               <button
                                 onClick={() => handleToggleSpeak(m.content, idx)}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:text-white hover:bg-zinc-800/60 transition cursor-pointer"
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                                  isLightMode
+                                    ? "hover:text-slate-900 hover:bg-slate-100"
+                                    : "hover:text-white hover:bg-zinc-800/60"
+                                }`}
                                 title="Listen"
                               >
                                 {speakingIndex === idx ? (
                                   <>
-                                    <VolumeX size={12} className="text-rose-400 animate-pulse" />
-                                    <span className="text-rose-400">Stop</span>
+                                    <VolumeX
+                                      size={12}
+                                      className="text-rose-500 animate-pulse"
+                                    />
+                                    <span className="text-rose-500 font-medium">Stop</span>
                                   </>
                                 ) : (
                                   <>
@@ -869,13 +1073,20 @@ const Dashboard = () => {
 
                               <button
                                 onClick={() => handleCopyMessage(m.content, idx)}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:text-white hover:bg-zinc-800/60 transition cursor-pointer"
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                                  isLightMode
+                                    ? "hover:text-slate-900 hover:bg-slate-100"
+                                    : "hover:text-white hover:bg-zinc-800/60"
+                                }`}
                                 title="Copy"
                               >
                                 {copiedIndex === idx ? (
                                   <>
-                                    <Check size={12} className="text-emerald-400" />
-                                    <span className="text-emerald-400">Copied</span>
+                                    <Check
+                                      size={12}
+                                      className="text-emerald-500"
+                                    />
+                                    <span className="text-emerald-500">Copied</span>
                                   </>
                                 ) : (
                                   <>
@@ -890,7 +1101,13 @@ const Dashboard = () => {
                       </div>
 
                       {isUser && (
-                        <div className="grid h-8 w-8 place-items-center rounded-xl bg-zinc-800 text-zinc-300 border border-zinc-700 shrink-0 text-xs font-bold">
+                        <div
+                          className={`grid h-8 w-8 place-items-center rounded-xl border shrink-0 text-xs font-bold ${
+                            isLightMode
+                              ? "bg-slate-200 border-slate-300 text-slate-700"
+                              : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                          }`}
+                        >
                           <User size={14} />
                         </div>
                       )}
@@ -904,7 +1121,13 @@ const Dashboard = () => {
                     <div className="max-w-[80%] rounded-2xl bg-gradient-to-r from-rose-600 to-rose-500 text-white px-4 py-3 text-xs sm:text-sm">
                       <p className="whitespace-pre-wrap">{pendingFirstMessage}</p>
                     </div>
-                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-zinc-800 text-zinc-300 shrink-0">
+                    <div
+                      className={`grid h-8 w-8 place-items-center rounded-xl border shrink-0 ${
+                        isLightMode
+                          ? "bg-slate-200 border-slate-300 text-slate-700"
+                          : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                      }`}
+                    >
                       <User size={14} />
                     </div>
                   </div>
@@ -916,15 +1139,27 @@ const Dashboard = () => {
                     <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 text-white shrink-0">
                       <Sparkles size={15} />
                     </div>
-                    <div className="rounded-2xl bg-[#111827] border border-zinc-800/80 px-4 py-2.5 text-xs text-zinc-300">
+                    <div
+                      className={`rounded-2xl border px-4 py-2.5 text-xs ${
+                        isLightMode
+                          ? "bg-white border-slate-200 text-slate-700 shadow-xs"
+                          : "bg-[#101623] border-zinc-800/80 text-zinc-300 shadow-md"
+                      }`}
+                    >
                       <div className="flex items-center gap-2">
                         <span className="typing-dots text-rose-500">
                           <span />
                           <span />
                           <span />
                         </span>
-                        <span className="text-xs text-zinc-400">
-                          {isStartingChat ? "Consulting AI..." : currentStatus || "Generating answer..."}
+                        <span
+                          className={`text-xs ${
+                            isLightMode ? "text-slate-500" : "text-zinc-400"
+                          }`}
+                        >
+                          {isStartingChat
+                            ? "Consulting AI..."
+                            : currentStatus || "Generating answer..."}
                         </span>
                       </div>
                     </div>
@@ -937,7 +1172,13 @@ const Dashboard = () => {
                     <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-tr from-rose-600 to-rose-400 text-white shrink-0">
                       <Sparkles size={15} />
                     </div>
-                    <div className="rounded-2xl bg-[#111827] border border-zinc-800/80 px-4 py-3 text-xs sm:text-sm">
+                    <div
+                      className={`rounded-2xl border px-4 py-3 text-xs sm:text-sm ${
+                        isLightMode
+                          ? "bg-white border-slate-200 text-slate-800 shadow-xs"
+                          : "bg-[#101623] border-zinc-800/80 text-zinc-100 shadow-md"
+                      }`}
+                    >
                       <p className="whitespace-pre-wrap">{streamContent}</p>
                     </div>
                   </div>
@@ -950,7 +1191,11 @@ const Dashboard = () => {
           {showScrollBottom && (
             <button
               onClick={scrollToBottom}
-              className="absolute bottom-4 right-6 z-20 grid h-8 w-8 place-items-center rounded-full bg-zinc-800 text-white shadow-lg border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer"
+              className={`absolute bottom-4 right-6 z-20 grid h-8 w-8 place-items-center rounded-full shadow-lg border transition cursor-pointer ${
+                isLightMode
+                  ? "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                  : "bg-zinc-800 text-white border-zinc-700 hover:bg-zinc-700"
+              }`}
             >
               <ArrowDown size={14} />
             </button>
@@ -958,11 +1203,21 @@ const Dashboard = () => {
         </div>
 
         {/* BOTTOM INPUT BAR */}
-        <div className="p-3 sm:p-4 border-t border-zinc-800/50 bg-[#090d16]/80 backdrop-blur-md">
+        <div
+          className={`p-3 sm:p-4 border-t transition-colors ${
+            isLightMode
+              ? "border-slate-200/80 bg-slate-50/80 backdrop-blur-md"
+              : "border-zinc-800/50 bg-[#080b11]/80 backdrop-blur-md"
+          }`}
+        >
           <div className="mx-auto max-w-3xl">
             <form
               onSubmit={handleSend}
-              className="relative flex items-end gap-2 rounded-2xl border border-zinc-700/60 bg-zinc-900/90 px-3 py-2 shadow-xl focus-within:border-rose-500/70 focus-within:ring-2 focus-within:ring-rose-500/20 transition"
+              className={`relative flex items-end gap-2 rounded-2xl border px-3 py-2 shadow-xl focus-within:border-rose-500/70 focus-within:ring-2 focus-within:ring-rose-500/20 transition ${
+                isLightMode
+                  ? "border-slate-300 bg-white"
+                  : "border-zinc-700/60 bg-zinc-900/90"
+              }`}
             >
               <textarea
                 ref={textareaRef}
@@ -970,8 +1225,12 @@ const Dashboard = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Intellix anything... (Enter to send, Shift + Enter for new line)"
-                className="max-h-40 w-full resize-none bg-transparent py-1.5 text-xs sm:text-sm text-white placeholder-zinc-500 outline-none leading-relaxed"
+                placeholder="Ask Intellix anything... (Enter to send, Shift + Enter for newline)"
+                className={`max-h-40 w-full resize-none bg-transparent py-1.5 text-xs sm:text-sm outline-none leading-relaxed ${
+                  isLightMode
+                    ? "text-slate-900 placeholder-slate-400"
+                    : "text-white placeholder-zinc-500"
+                }`}
               />
 
               <div className="flex items-center gap-1 shrink-0 pb-0.5">
@@ -982,7 +1241,11 @@ const Dashboard = () => {
                       setInput("");
                       if (textareaRef.current) textareaRef.current.style.height = "auto";
                     }}
-                    className="grid h-7 w-7 place-items-center rounded-lg text-zinc-400 hover:text-white transition cursor-pointer"
+                    className={`grid h-7 w-7 place-items-center rounded-lg transition cursor-pointer ${
+                      isLightMode
+                        ? "text-slate-400 hover:text-slate-700"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
                   >
                     <X size={14} />
                   </button>
@@ -1002,8 +1265,12 @@ const Dashboard = () => {
               </div>
             </form>
 
-            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-zinc-400">
-              <span>Intellix can assist with real-time web search, reasoning, and tools.</span>
+            <div
+              className={`mt-1.5 flex items-center justify-between px-1 text-[10px] ${
+                isLightMode ? "text-slate-400" : "text-zinc-500"
+              }`}
+            >
+              <span>Intellix AI Assistant • Real-time reasoning and web tools</span>
               <span className="hidden sm:inline">Shift + Enter for newline</span>
             </div>
           </div>
