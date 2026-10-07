@@ -1,9 +1,14 @@
 import axios from "axios";
 
+const getApiBaseUrl = () => {
+    if (import.meta.env.DEV) return "";
+    return import.meta.env.VITE_API_URL || "https://intellix-chat-bacend.vercel.app";
+};
+
 const api = axios.create({
-    baseURL: import.meta.env.DEV ? "" : (import.meta.env.VITE_API_URL || ""),
+    baseURL: getApiBaseUrl(),
     withCredentials: true,
-})
+});
 
 // register
 export async function register({ username, email, password }) {

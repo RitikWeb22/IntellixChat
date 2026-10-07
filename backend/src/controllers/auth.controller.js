@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import { sendEmail } from "../service/email.service.js";
 import { redis } from "../config/cache.js";
 
-const getFrontendUrl = () => process.env.FRONTEND_URL || "http://localhost:5173";
-const getBackendUrl = () => process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`;
+const getFrontendUrl = () => process.env.FRONTEND_URL || (process.env.NODE_ENV === "production" ? "https://intellix-chat.vercel.app" : "http://localhost:5173");
+const getBackendUrl = () => process.env.BACKEND_URL || (process.env.NODE_ENV === "production" ? "https://intellix-chat-bacend.vercel.app" : `http://localhost:${process.env.PORT || 3000}`);
 
 /**
  * @desc Register a new user and send verification email
@@ -143,10 +143,16 @@ export async function login(req, res) {
             { expiresIn: "7d" }
         );
 
+        const isHttpsOrProduction =
+            process.env.NODE_ENV === "production" ||
+            req.secure ||
+            req.headers["x-forwarded-proto"] === "https" ||
+            (req.headers.host && !req.headers.host.includes("localhost"));
+
         res.cookie("token", token, {
             httpOnly: true,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            secure: process.env.NODE_ENV === "production",
+            sameSite: isHttpsOrProduction ? "none" : "lax",
+            secure: isHttpsOrProduction,
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
@@ -215,10 +221,16 @@ export const logout = async (req, res) => {
                 console.warn("Could not cache blacklisted token:", err.message);
             }
         }
+        const isHttpsOrProduction =
+            process.env.NODE_ENV === "production" ||
+            req.secure ||
+            req.headers["x-forwarded-proto"] === "https" ||
+            (req.headers.host && !req.headers.host.includes("localhost"));
+
         res.clearCookie("token", {
             httpOnly: true,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            secure: process.env.NODE_ENV === "production",
+            sameSite: isHttpsOrProduction ? "none" : "lax",
+            secure: isHttpsOrProduction,
         });
 
         return res.status(200).json({

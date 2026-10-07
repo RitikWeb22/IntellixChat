@@ -2,38 +2,75 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
+import connectDB from "./config/database.js";
 import authRouter from "./routes/auth.route.js";
 import chatRouter from "./routes/chat.route.js";
 
 const app = express();
 
+// Trust reverse proxies (Vercel, AWS, Nginx) for secure cookies
+app.set("trust proxy", 1);
+
 const allowedOrigins = [
-    process.env.FRONTEND_URL || "http://localhost:5173",
+    process.env.FRONTEND_URL,
+    "https://intellix-chat.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-];
+    "http://localhost:3000",
+].filter(Boolean);
 
-// Middleware
-app.use(express.static("public"));
-app.use(express.json());
-app.use(cookieParser());
+// CORS configuration supporting credentials across Vercel deployments
 app.use(
     cors({
         origin: function (origin, callback) {
             // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-            if (!origin || allowedOrigins.includes(origin)) {
+            if (!origin) return callback(null, true);
+
+            if (
+                allowedOrigins.includes(origin) ||
+                origin.endsWith(".vercel.app") ||
+                origin.includes("localhost") ||
+                origin.includes("127.0.0.1")
+            ) {
                 return callback(null, true);
             }
-            return callback(null, true); // Permissive in dev to avoid CORS friction
+            // Allow in dev / fallback to avoid hard CORS blocks
+            return callback(null, true);
         },
         credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
+        exposedHeaders: ["Set-Cookie"],
     })
 );
+
+app.use(express.static("public"));
+app.use(express.json());
+app.use(cookieParser());
 app.use(morgan("dev"));
 
-// Health check endpoint
+// Health check endpoint (does not require DB connection)
 app.get("/api/health", (req, res) => {
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+    res.status(200).json({
+        status: "ok",
+        env: process.env.NODE_ENV || "development",
+        timestamp: new Date().toISOString(),
+    });
+});
+
+// Database connection middleware for Serverless (Vercel) & Traditional Environments
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error("Database connection failed in request middleware:", err.message);
+        return res.status(500).json({
+            message: "Database connection failed. Please ensure MONGO_URI is set in Vercel environment variables and MongoDB Atlas has Network Access set to 0.0.0.0/0.",
+            error: err.message,
+            success: false,
+        });
+    }
 });
 
 // Routes

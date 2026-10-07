@@ -3,11 +3,17 @@ import { Server } from "socket.io";
 let io;
 
 export const initSocketServer = (httpServer) => {
-    const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+    const allowedOrigin = process.env.FRONTEND_URL || "https://intellix-chat.vercel.app";
 
     io = new Server(httpServer, {
         cors: {
-            origin: [allowedOrigin, "http://localhost:5173", "http://127.0.0.1:5173"],
+            origin: [
+                allowedOrigin,
+                "https://intellix-chat.vercel.app",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:3000",
+            ],
             credentials: true,
         },
     });
@@ -15,7 +21,6 @@ export const initSocketServer = (httpServer) => {
     console.log("Socket.IO server initialized with allowed origins:", allowedOrigin);
 
     io.on("connection", (socket) => {
-        // Track connected client
         socket.on("chat:join", ({ chatId }) => {
             if (!chatId) return;
             socket.join(String(chatId));
@@ -27,7 +32,7 @@ export const initSocketServer = (httpServer) => {
         });
 
         socket.on("disconnect", () => {
-            // disconnected
+            // client disconnected
         });
     });
 };
