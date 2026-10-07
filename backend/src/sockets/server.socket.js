@@ -38,8 +38,5 @@ export const initSocketServer = (httpServer) => {
 };
 
 export function getIO() {
-    if (!io) {
-        throw new Error("Socket.io not initialized!");
-    }
-    return io;
+    return io || null;
 }

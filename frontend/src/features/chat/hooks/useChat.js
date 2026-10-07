@@ -98,6 +98,7 @@ export const useChat = () => {
 
             const data = await sendMessage(payload);
             const { chat, aiMessage } = data;
+            const finalAiContent = String(aiMessage?.content || "");
 
             dispatch(
                 createNewChat({
@@ -122,10 +123,11 @@ export const useChat = () => {
             dispatch(setTyping({ chatId: chat._id, isTyping: false }));
             dispatch(setAiStatus({ chatId: chat._id, status: "" }));
             dispatch(clearAiStream({ chatId: chat._id }));
+
             dispatch(
                 addNewMessage({
                     chatId: chat._id,
-                    content: String(aiMessage?.content || ""),
+                    content: finalAiContent,
                     role: normalizeRole(aiMessage?.role),
                 })
             );
@@ -157,7 +159,7 @@ export const useChat = () => {
                             id: c._id,
                             title: c.title,
                             messages: [],
-                            lastUpdated: c.updatedAt,
+                            lastUpdated: c.updatedAt || c.createdAt,
                         };
                         return acc;
                     }, {})

@@ -6,6 +6,7 @@ import { getIO } from "../sockets/server.socket.js";
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function streamTextChunks(io, chatId, text) {
+    if (!io) return;
     const chunkSize = 24;
     for (let i = 0; i < text.length; i += chunkSize) {
         const chunk = text.slice(i, i + chunkSize);
