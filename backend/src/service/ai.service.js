@@ -196,15 +196,15 @@ async function getFallbackSmartResponse(messages) {
         }
     }
 
-    // Live Web Search queries
-    if (/^(search|who is|what is|find|latest|news|how to|explain|weather)\b/i.test(text) || text.length > 20) {
+    // Live Web Search queries - only when explicitly asking for search or news
+    if (/^(search|who is|what is|find|latest|news|weather)\b/i.test(text)) {
         try {
             const rawSearch = await searchInternet({ query: lastUserMessage });
             const parsed = JSON.parse(rawSearch);
             if (parsed.results && parsed.results.length > 0) {
                 let reply = `🌐 **Live Web Information for:** *"${lastUserMessage}"*\n\n`;
                 parsed.results.slice(0, 3).forEach((r, idx) => {
-                    reply += `### ${idx + 1}. [${r.title}](${r.url})\n${r.content}\n\n`;
+                    reply += `**${idx + 1}. [${r.title}](${r.url})**\n${r.content.slice(0, 240)}...\n\n`;
                 });
                 return reply;
             }
@@ -222,35 +222,76 @@ export async function generateResponse(messages, options = {}) {
 
     onStatus?.("Thinking...");
 
-    // Try Gemini First if key is present
+    // 1. Try Gemini (Direct Fast REST / LangChain) if key is present
     if (hasGeminiKey) {
         try {
             onStatus?.("Consulting Gemini AI...");
-            const geminiModel = new ChatGoogleGenerativeAI({
-                model: "gemini-2.5-flash",
-                apiKey: activeGeminiKey,
-                maxOutputTokens: 2048,
-            });
 
-            const agent = createAgent({
-                model: geminiModel,
-                tools: agentTools,
-            });
+            // First try direct high-speed REST API (avoids LangChain timeout/agent overhead)
+            const restResponse = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeGeminiKey}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: messages.map((m) => ({
+                            role: m.role === "user" ? "user" : "model",
+                            parts: [{ text: m.content }],
+                        })),
+                        generationConfig: {
+                            maxOutputTokens: 2048,
+                            temperature: 0.7,
+                        },
+                    }),
+                    signal: AbortSignal.timeout(7500),
+                }
+            );
 
-            // 8 second timeout to protect Vercel Serverless execution
-            const response = await Promise.race([
-                agent.invoke({ messages: buildAgentMessages(messages) }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8500)),
-            ]);
-
-            const finalMessage = response?.messages?.[response?.messages?.length - 1]?.text;
-            if (finalMessage) return finalMessage;
+            if (restResponse.ok) {
+                const data = await restResponse.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) return text;
+            } else {
+                const errData = await restResponse.json().catch(() => ({}));
+                console.warn("Gemini REST error:", errData?.error?.message || restResponse.statusText);
+            }
         } catch (geminiError) {
             console.warn("Gemini execution failed:", geminiError?.message || geminiError);
         }
     }
 
-    // Try Mistral if Gemini didn't return
+    // 2. Try Groq AI (Llama 3.3 70B) if configured
+    if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.length > 15) {
+        try {
+            onStatus?.("Consulting Groq AI...");
+            const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+                },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: messages.map((m) => ({
+                        role: m.role === "user" ? "user" : "assistant",
+                        content: m.content,
+                    })),
+                    max_tokens: 2048,
+                }),
+                signal: AbortSignal.timeout(7500),
+            });
+
+            if (groqRes.ok) {
+                const groqData = await groqRes.json();
+                const groqText = groqData.choices?.[0]?.message?.content;
+                if (groqText) return groqText;
+            }
+        } catch (groqError) {
+            console.warn("Groq execution failed:", groqError?.message || groqError);
+        }
+    }
+
+    // 3. Try Mistral if Gemini/Groq didn't return
     if (hasMistralKey) {
         try {
             onStatus?.("Consulting Mistral AI...");
@@ -266,7 +307,7 @@ export async function generateResponse(messages, options = {}) {
 
             const response = await Promise.race([
                 agent.invoke({ messages: buildAgentMessages(messages) }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8500)),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 7500)),
             ]);
 
             const finalMessage = response?.messages?.[response?.messages?.length - 1]?.text;
