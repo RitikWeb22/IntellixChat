@@ -806,7 +806,7 @@ const Dashboard = () => {
               </span>
               <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Intellix AI 2.0
+                Gemini 2.8 Flash
               </span>
             </div>
           </div>

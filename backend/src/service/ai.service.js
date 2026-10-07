@@ -225,35 +225,46 @@ export async function generateResponse(messages, options = {}) {
     // 1. Try Gemini (Direct Fast REST / LangChain) if key is present
     if (hasGeminiKey) {
         try {
-            onStatus?.("Consulting Gemini AI...");
+            onStatus?.("Consulting Gemini 2.8 Flash...");
 
-            // First try direct high-speed REST API (avoids LangChain timeout/agent overhead)
-            const restResponse = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeGeminiKey}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: messages.map((m) => ({
-                            role: m.role === "user" ? "user" : "model",
-                            parts: [{ text: m.content }],
-                        })),
-                        generationConfig: {
-                            maxOutputTokens: 2048,
-                            temperature: 0.7,
-                        },
-                    }),
-                    signal: AbortSignal.timeout(7500),
+            const candidateModels = [
+                process.env.GEMINI_MODEL || "gemini-2.8-flash",
+                "gemini-2.5-flash",
+                "gemini-flash-latest",
+            ];
+
+            for (const modelName of candidateModels) {
+                try {
+                    const restResponse = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeGeminiKey}`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: messages.map((m) => ({
+                                    role: m.role === "user" ? "user" : "model",
+                                    parts: [{ text: m.content }],
+                                })),
+                                generationConfig: {
+                                    maxOutputTokens: 2048,
+                                    temperature: 0.7,
+                                },
+                            }),
+                            signal: AbortSignal.timeout(7500),
+                        }
+                    );
+
+                    if (restResponse.ok) {
+                        const data = await restResponse.json();
+                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) return text;
+                    } else {
+                        const errData = await restResponse.json().catch(() => ({}));
+                        console.warn(`Gemini (${modelName}) error:`, errData?.error?.message || restResponse.statusText);
+                    }
+                } catch (candidateErr) {
+                    console.warn(`Model ${modelName} fetch error:`, candidateErr.message);
                 }
-            );
-
-            if (restResponse.ok) {
-                const data = await restResponse.json();
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) return text;
-            } else {
-                const errData = await restResponse.json().catch(() => ({}));
-                console.warn("Gemini REST error:", errData?.error?.message || restResponse.statusText);
             }
         } catch (geminiError) {
             console.warn("Gemini execution failed:", geminiError?.message || geminiError);
