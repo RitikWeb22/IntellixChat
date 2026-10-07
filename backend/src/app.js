@@ -50,9 +50,10 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 // Health check endpoint (does not require DB connection)
-app.get("/api/health", (req, res) => {
+app.get(["/api/health", "/health", "/"], (req, res) => {
     res.status(200).json({
         status: "ok",
+        service: "Intellix API",
         env: process.env.NODE_ENV || "development",
         timestamp: new Date().toISOString(),
     });
@@ -73,9 +74,11 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Routes
+// Routes (supporting both /api/auth and /auth for flexible serverless proxies)
 app.use("/api/auth", authRouter);
+app.use("/auth", authRouter);
 app.use("/api/chats", chatRouter);
+app.use("/chats", chatRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
