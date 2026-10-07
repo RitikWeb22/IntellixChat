@@ -10,13 +10,24 @@ const api = axios.create({
     withCredentials: true,
 });
 
+api.interceptors.request.use((config) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("intellix_token") : null;
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 // register
 export async function register({ username, email, password }) {
     const response = await api.post("/api/auth/register", {
         username,
         email,
         password
-    })
+    });
+    if (response.data?.token) {
+        localStorage.setItem("intellix_token", response.data.token);
+    }
     return response.data;
 }
 
@@ -25,7 +36,10 @@ export async function login({ email, password }) {
     const response = await api.post("/api/auth/login", {
         email,
         password
-    })
+    });
+    if (response.data?.token) {
+        localStorage.setItem("intellix_token", response.data.token);
+    }
     return response.data;
 }
 
@@ -37,6 +51,9 @@ export async function getMe() {
 
 // logout
 export async function logout() {
+    if (typeof window !== "undefined") {
+        localStorage.removeItem("intellix_token");
+    }
     const response = await api.post("/api/auth/logout");
     return response.data;
 }
