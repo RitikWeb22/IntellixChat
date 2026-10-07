@@ -1,4 +1,12 @@
 import mongoose from "mongoose";
+import dns from "node:dns";
+
+// Use public DNS resolvers to prevent querySrv ECONNREFUSED on local Windows/ISP networks
+try {
+    dns.setServers(["8.8.8.8", "1.1.1.1"]);
+} catch (e) {
+    // Ignore if not supported in environment
+}
 
 let cachedConnection = null;
 
