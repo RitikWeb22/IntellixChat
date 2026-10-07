@@ -6,10 +6,15 @@ import * as z from "zod";
 import { searchInternet, readWebPage } from "./internet.service.js";
 import { sendEmail } from "./email.service.js";
 
+const activeGeminiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GEMINI_API_KEY ||
+    "AIzaSyB1I-PBr7o8SoS2p7bSPzkCp2YB1oPjV0M";
+
 const hasGeminiKey = Boolean(
-    process.env.GEMINI_API_KEY &&
-    process.env.GEMINI_API_KEY.length > 20 &&
-    !process.env.GEMINI_API_KEY.includes("your_gemini")
+    activeGeminiKey &&
+    activeGeminiKey.length > 20 &&
+    !activeGeminiKey.includes("your_gemini")
 );
 
 const hasMistralKey = Boolean(
@@ -162,7 +167,7 @@ export async function generateResponse(messages, options = {}) {
             onStatus?.("Consulting Gemini AI...");
             const geminiModel = new ChatGoogleGenerativeAI({
                 model: "gemini-2.5-flash",
-                apiKey: process.env.GEMINI_API_KEY,
+                apiKey: activeGeminiKey,
                 maxOutputTokens: 2048,
             });
 

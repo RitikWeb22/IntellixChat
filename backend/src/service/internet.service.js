@@ -2,10 +2,13 @@ import { tavily as Tavily } from "@tavily/core";
 
 let tavilyClient = null;
 
-if (process.env.TAVILY_API_KEY) {
+const activeTavilyKey =
+    process.env.TAVILY_API_KEY || "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";
+
+if (activeTavilyKey) {
     try {
         tavilyClient = Tavily({
-            apiKey: process.env.TAVILY_API_KEY,
+            apiKey: activeTavilyKey,
         });
     } catch (err) {
         console.warn("Failed to initialize Tavily client:", err?.message || err);
